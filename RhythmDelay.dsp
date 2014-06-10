@@ -10,16 +10,15 @@ declare copyright 	"(c) Bart Brouns 2014";
 // imports
 //-----------------------------------------------
 
-import ("oscillator.lib");
-import ("maxmsp.lib");
-import ("effect.lib");
+import ("filter.lib");
+
 
 //-----------------------------------------------
 // contants
 //-----------------------------------------------
-DelMax = 10*44100;  //max
-TapMax = 8;
-NrChan = 2;
+DelMax = 10*44100;  	//maximum delay time in samples
+TapMax = 8;		//maximum number of taps
+NrChan = 2;		//number of channels
 
 //-----------------------------------------------
 // the GUI
