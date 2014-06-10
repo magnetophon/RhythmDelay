@@ -33,7 +33,11 @@ Tap = button("[1]Tap"):startPulse;
 
 SH(trig,x) = (*(1 - trig) + x * trig) ~_;
 
-Reset = SH(ResetBtn|Tap,ResetBtn);
+//Reset = SH(ResetBtn|Tap,ResetBtn);
+
+Initialized = (SH(ResetBtn|Tap,1)*-1)+1;
+
+Reset = SH(ResetBtn|Tap,ResetBtn) | Initialized;
 
 startPulse= _ <: _, mem: - : >(0); //one sample high pulse at start
 
