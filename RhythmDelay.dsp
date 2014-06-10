@@ -1,5 +1,5 @@
 
-declare name 		"RythmDelay";
+declare name 		"RhythmDelay";
 declare version 	"0.1";
 declare author 		"Bart Brouns";
 declare license 	"GNU 3.0";
