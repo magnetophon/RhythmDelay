@@ -24,13 +24,16 @@ NrChan = 2;		//number of channels
 // the GUI
 //-----------------------------------------------
 
-Reset =  button("[0]Reset"):startPulse;
+ResetBtn =  button("[0]Reset"):startPulse;
 Tap = button("[1]Tap"):startPulse;
 
 //-----------------------------------------------
 // the DSP
 //-----------------------------------------------
+
 SH(trig,x) = (*(1 - trig) + x * trig) ~_;
+
+Reset = SH(ResetBtn|Tap,ResetBtn);
 
 startPulse= _ <: _, mem: - : >(0); //one sample high pulse at start
 
@@ -44,7 +47,7 @@ currentTap = countUpReset(TapMax, Tap, Reset); //how many taps did we do?
 
 tapIsHigh(N) = SH((Reset | startPulse(currentTap == N)),Reset)*((Reset*-1)+1); //the length of the Nth tap is how long "tapIsHigh(N) " is one
 
-MonoRhythmDelay(taps) = _<:par(i, taps, (_@(timer(tapIsHigh(i+1)))) * ((currentTap >= i):smooth(0.999)) ):>_; //make TapMax parallel delaylines but only let each hear when  we have a tap with that number.
+MonoRhythmDelay(taps) = _<:par(i, taps, (_@(timer(tapIsHigh(i+2)))) * ((currentTap > i+1):smooth(0.999)) ):>_; //make TapMax parallel delaylines but only let each hear when  we have a tap with that number.
 
 RhythmDelay(taps,chans) = par(i, chans, MonoRhythmDelay(taps));
 
