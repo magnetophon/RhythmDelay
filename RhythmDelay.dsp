@@ -11,38 +11,75 @@ declare reference 	"inspired by the D-Two - Multitap Rhythm Delay by TC Electron
 //-----------------------------------------------
 
 import ("filter.lib");
-
+zita_rev_fdn(f1,f2,t60dc,t60m,fsmax) = component("effect.lib").zita_rev_fdn(f1,f2,t60dc,t60m,fsmax);
 
 //-----------------------------------------------
 // contants
 //-----------------------------------------------
-DelMax = 10*44100;  		//maximum delay time in samples
-tapMax = 8;			//maximum number of taps
-NrChan = 2;			//number of channels
-noTapsMaxTime = 3*44100;  	//maximum delay time for each tap. After this time we reset the nr of taps
+fsmax		= 44100;
+DelMax		= 10*fsmax;  	//maximum delay time in samples
+tapMax		= 8;		//maximum number of taps
+NrChan		= 2;		//number of channels
+noTapsMaxTime	= 3*fsmax;  	//maximum delay time for each tap. After this time we reset the nr of taps
 
 //-----------------------------------------------
 // the GUI
 //-----------------------------------------------
 
-mainGroup(x)  = (vgroup("[0]RhythmDelay", x)); // To recieve OSC pitch and other messages
-  tapGroup(x)  = mainGroup(vgroup("[0tap", x));
-    resetBtn	=  tapGroup(button("[0]reset"):startPulse);
-    tap		=  tapGroup(button("[1]tap"):startPulse);
-    morphGroup(x)  = tapGroup(hgroup("[3]morph", x));
-      morphSliders = morphGroup(par(i, tapMax, (vslider("[%i]A/B %nr",	((i/tapMax)*-1)+1, 0, 1, 0.01):smooth(0.999)) with { nr = i+1;}))
+mainGroup(x) 		= (vgroup("[0]RhythmDelay", x)); // To recieve OSC pitch and other messages
+  tapGroup(x)  		= mainGroup(vgroup("[0tap", x));
+    resetBtn		= tapGroup(button("[0]reset"):startPulse);
+    tap			= tapGroup(button("[1]tap"):startPulse);
+    morphGroup(x)	= tapGroup(hgroup("[3]morph", x));
+      morphSliders 	= morphGroup(par(i, tapMax, (vslider("[%i]A/B %nr",	((i/tapMax)*-1)+1, 0, 1, 0.01):smooth(0.999)) with { nr = i+1;}))
       ;
 
   //smoothing is done in morph, 
-  ABgroup(x)  = mainGroup(vgroup("[1]effects", x));
-    Agroup(x)	= ABgroup((hgroup("[0]A", x)));
-      Avolume	= Agroup(vslider("[0]volume",	-144, -144, 0, 0.1)):db2linear;
-      AlpFc	= Agroup(vslider("[1]lp freq",	1, 0, 1, 0.001):pow(2)*20000+20);
-      AlpQ	= Agroup(vslider("[2]lp Q",	1, 0.5, 7, 0.001));
-    Bgroup(x)	= ABgroup((hgroup("[0]B", x)));
-      Bvolume	= Bgroup(vslider("[0]volume",	-144, -144, 0, 0.1)):db2linear;
-      BlpFc	= Bgroup(vslider("[1]lp freq",	1, 0, 1, 0.001):pow(2)*20000+20);
-      BlpQ	= Bgroup(vslider("[2]lp Q",	1, 0.5, 7, 0.001));
+  ABgroup(x)		= mainGroup(vgroup("[1]effects", x));
+    Agroup(x)		= ABgroup((hgroup("[0]A", x)));
+      Avolume		= Agroup(vslider("[0]volume",	-144, -144, 0, 0.1)):db2linear;
+      ALPgroup(x)	= Agroup((hgroup("[1]low pass", x)));
+	AlpFc		= ALPgroup(vslider("[0]freq",	1, 0, 1, 0.001):pow(2)*20000+20);
+	AlpQ		= ALPgroup(vslider("[1]Q",	1, 0.5, 7, 0.1));
+      AreverbGroup(x)	= Agroup((hgroup("[2]reverb", x)));
+	Af1		= AreverbGroup(vslider("[0] LF X [unit:Hz] 
+		[tooltip: Crossover frequency (Hz) separating low and middle frequencies]",
+		200, 50, 1000, 1));
+	At60dc		= AreverbGroup(vslider("[1] Low RT60 [unit:s] 
+		 [tooltip: T60 = time (in seconds) to decay 60dB in low-frequency band]",
+		3, 1, 8, 0.1));
+	At60m		= AreverbGroup(vslider("[2] Mid RT60 [unit:s] 
+		[tooltip: T60 = time (in seconds) to decay 60dB in middle band]",
+		2, 1, 8, 0.1));
+	Af2		= AreverbGroup(vslider("[3] HF Damping [unit:Hz] 
+	    [tooltip: Frequency (Hz) at which the high-frequency T60 is half the middle-band's T60]",
+	    6000, 1500, 0.49*fsmax, 1));
+	Adrywet 		= AreverbGroup(vslider("[4] Dry/Wet Mix 
+	    [tooltip: -1 = dry, 1 = wet]",
+	    0, -1.0, 1.0, 0.01)) : smooth(0.999);
+     Bgroup(x)		= ABgroup((hgroup("[1]B", x)));
+      Bvolume		= Bgroup(vslider("[0]volume",	-144, -144, 0, 0.1)):db2linear;
+      BLPgroup(x)	= Bgroup((hgroup("[1]low pass", x)));
+	BlpFc		= BLPgroup(vslider("[0]freq",	1, 0, 1, 0.001):pow(2)*20000+20);
+	BlpQ		= BLPgroup(vslider("[1]Q",	1, 0.5, 7, 0.1));
+      BreverbGroup(x)	= Bgroup((hgroup("[2]reverb", x)));
+	Bf1	= BreverbGroup(vslider("[0] LF X [unit:Hz] 
+	    [tooltip: Crossover frequency (Hz) separating low and middle frequencies]",
+	    200, 50, 1000, 1));
+	Bt60dc	= BreverbGroup(vslider("[1] Low RT60 [unit:s] 
+		 [tooltip: T60 = time (in seconds) to decay 60dB in low-frequency band]",
+		3, 1, 8, 0.1));
+	Bt60m	= BreverbGroup(vslider("[2] Mid RT60 [unit:s] 
+		[tooltip: T60 = time (in seconds) to decay 60dB in middle band]",
+		2, 1, 8, 0.1));
+	Bf2	= BreverbGroup(vslider("[3] HF Damping [unit:Hz] 
+	    [tooltip: Frequency (Hz) at which the high-frequency T60 is half the middle-band's T60]",
+	    6000, 1500, 0.49*fsmax, 1));
+	Bdrywet 	= BreverbGroup(vslider("[4] Dry/Wet Mix 
+	    [tooltip: -1 = dry, 1 = wet]",
+	    0, -1.0, 1.0, 0.01)) : smooth(0.999);
+
+
 //-----------------------------------------------
 // the morpher
 //-----------------------------------------------
@@ -90,10 +127,34 @@ tapIsHigh(N) = SH((Reset | startPulse(currenttap == N)),Reset)*((Reset*-1)+1); /
 
 insertFX(tap) = 
 resonlp(fc,Q,volume)
+:reverb(f1,f2,t60dc,t60m,drywet)
 with {
 volume	= morph(Avolume,Bvolume,tap);
 fc 	= morph(AlpFc,BlpFc,tap);
 Q 	= morph(AlpQ,BlpQ,tap);
+f1	= morph(Af1,Bf1,tap);
+f2	= morph(Af2,Bf2,tap):max(0);
+t60dc	= morph(At60dc,Bt60dc,tap):max(0);
+t60m	= morph(At60m,Bt60m,tap):max(1):min(8);
+drywet	= morph(Adrywet,Bdrywet,tap);
+};
+
+
+reverb(f1,f2,t60dc,t60m,drywet,x) = x:zita_distrib(N): zita_rev_fdn(f1,f2,t60dc,t60m,fsmax) : output(N): dry_wet(x)
+with {
+  N = 8;
+  zita_distrib(N) = _<:_,_*-1<:  fanflip(N) with {
+    fanflip(4) = _,_,*(-1),*(-1);
+    fanflip(N) = fanflip(N/2),fanflip(N/2);
+  };
+  output(N) = outmix(N) :> *(t1);
+  t1 = 0.37; // zita-rev1 linearly ramps from 0 to t1 over one buffer
+  outmix(4) = !,butterfly(2),!; // probably the result of some experimenting!
+  outmix(N) = outmix(N/2),par(i,N/2,!);
+  dry_wet(x) = *(wet) + dry*x with {
+    wet = 0.5*(drywet+1.0);
+    dry = 1.0-wet;
+  };
 };
 
 //-----------------------------------------------
@@ -108,4 +169,5 @@ time(nr) = (timer(tapIsHigh(nr+2)));
 
 RhythmDelay = par(i, NrChan, MonoRhythmDelay); //the multichannel version
 
+//process = insertFX(1);
 process = RhythmDelay;
