@@ -1,6 +1,6 @@
 
 declare name 		"RhythmDelay";
-declare version 	"1.0";
+declare version 	"1.1";
 declare author 		"Bart Brouns";
 declare license 	"GNU 3.0";
 declare copyright 	"(c) Bart Brouns 2014";
@@ -64,9 +64,13 @@ mainGroup(x) 		= (vgroup("[0]RhythmDelay", x)); // To recieve OSC pitch and othe
 //-----------------------------------------------
 // the morpher
 //-----------------------------------------------
+// there are some of insert-effects on each tap:
+// a low-pass filter
+// a reverb
+
 // we have two sets of controls for the insert FX: A and B
 // the actual settings for each tap are a linear interpolation between the two.
-// each dekay-tap has a slider for each tap that controlls the interpolation
+// each delay-tap has a slider controlling the interpolation
 
 // todo make a knob for each control that controlls the offset between L and R (stereo only)
 // todo use sdelay(N, it, dt) for smoot LR delay offset?
