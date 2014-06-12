@@ -15,11 +15,16 @@ import ("effect.lib");
 //-----------------------------------------------
 // contants
 //-----------------------------------------------
-fsmax		= 44100;
+sampleRate		= 44100;
 nrChans		= 2;			//number of channels
 nrTaps		= 4;			//maximum number of taps
-maxTapTime	= 3*fsmax;  		//maximum delay time for each tap. After this time we reset the nr of taps
+maxTapTime	= 3*sampleRate;  		//maximum delay time for each tap. After this time we reset the nr of taps
 maxDelTime	= maxTapTime*nrTaps;  	//maximum delay time in samples
+panTime		= 0.04;			//maximum panner delay time in seconds
+//maximum panner delay time in samples,expressed as a power of 2
+//maxPanSamples	= (_<:((_ < (sampleRate*panTime)),_*1,_*2:select2))~max(2:pow(10));
+maxPanSamples	= 8192; //has to be a number.not an expression. It equals 42 ms at 192kHz
+maxPanDelay	= panTime*sampleRate:min(maxPanSamples); //maximum panner delay time in samples
 //-----------------------------------------------
 // the GUI
 //-----------------------------------------------
@@ -29,10 +34,16 @@ mainGroup(x) 		= (hgroup("[0]RhythmDelay[tooltip: RhythmDelay by magnetophon]", 
     tap			= tapGroup(button("[0]tap[tooltip: tap a rhythm]"):startPulse);
     resetBtn		= tapGroup(button("[1]reset[tooltip: reset the rhythm]"):startPulse);
     morphGroup(x)	= tapGroup(hgroup("[2]morph[tooltip: morph between settings A and B]", x));
-      morphSliders 	= morphGroup(par(i, nrTaps, (vslider("[%i]A/B tap %nr[tooltip: on which point between A and B is tap %nr]",	((i/(nrTaps-1))*-1)+1, 0, 1, 0.01)) with { nr = i+1;}));
-    feedbackGroup(x)	= tapGroup(hgroup("[3]morph[tooltip: morph between settings A and B]", x));
-      feedback		= feedbackGroup(vslider("[0]feedback [unit:dB][tooltip: the amount of feedback]",-1, -144, 0, 0.1):db2linear);
-      feedbackMorph	= feedbackGroup(vslider("[1]A/B feedback[tooltip: on which point between A and B is feedback tap]",	0, 0, 1, 0.01));
+      morphSliders 	= morphGroup(par(i, nrTaps, ABpanGroup(
+	(hslider("[0]pan[tooltip: move tap %nr left to right] [style:knob]",	0, -1, 1, 0.01)
+	,(vslider("[1]A/B[tooltip: on which point between A and B is tap %nr]",	((i/(nrTaps-1))*-1)+1, 0, 1, 0.01)))
+      )with { 
+	nr = i+1;
+	ABpanGroup(x)	= vgroup("[%i]tap %nr[tooltip: the settings for tap %nr]", x);
+      }):interleave(nrChans,nrTaps));
+    feedbackGroup(x)	= tapGroup(hgroup("[%nr]feedback[tooltip: morph between settings A and B]", x))with {nr = 1+nrTaps;};
+      feedback		= feedbackGroup(vslider("[0]amount[tooltip: the amount of feedback]",0.5, 0, 1, 0.01));
+      feedbackMorph	= feedbackGroup(vslider("[1]A/B[tooltip: on which point between A and B is the feedback tap]",	0, 0, 1, 0.01))with {nr = 2+nrTaps;};
 
   //smoothing is done in morph, 
   ABgroup(x)		= mainGroup(vgroup("[1]insert effects[tooltip: independant insert effects on each tap]", x));
@@ -41,27 +52,27 @@ mainGroup(x) 		= (hgroup("[0]RhythmDelay[tooltip: RhythmDelay by magnetophon]", 
       FXparams = environment {
 	level		= vslider("[0]level [unit:dB][tooltip: the volume level]",0, -144, 0, 0.1):db2linear;
 	HPgroup(x)	= hgroup("[1]high pass[unit:Hz][tooltip: resonant high-pass filter]", x);
-	  hpFc		= HPgroup(vslider("[0]freq[tooltip: lp-filter cutoff frequency]", 0.49*fsmax, 20, 0.49*fsmax, 1));
-	  hpQ		= HPgroup(vslider("[1]Q[tooltip: lp-filter resonance]",	1, 0.5, 7, 0.1));
+	  hpFc		= HPgroup(vslider("[0]freq[tooltip: hp-filter cutoff frequency]", 20, 20, 0.49*sampleRate, 1));
+	  hpQ		= HPgroup(vslider("[1]Q[tooltip: hp-filter resonance]",	1, 0.5, 7, 0.1));
 	LPgroup(x)	= hgroup("[2]low pass[unit:Hz][tooltip: resonant low-pass filter]", x);
-	  lpFc		= LPgroup(vslider("[0]freq[tooltip: lp-filter cutoff frequency]", 0.49*fsmax, 20, 0.49*fsmax, 1));
+	  lpFc		= LPgroup(vslider("[0]freq[tooltip: lp-filter cutoff frequency]", 0.49*sampleRate, 20, 0.49*sampleRate, 1));
 	  lpQ		= LPgroup(vslider("[1]Q[tooltip: lp-filter resonance]",	1, 0.5, 7, 0.1));
 	reverbGroup(x)	= hgroup("[3]reverb[tooltip: zita-rev1 by Fons Adriaensen]", x);
-	  f1		= reverbGroup(vslider("[0] LF X [unit:Hz] 
+	  f1		= reverbGroup(vslider("[0] lf X [unit:Hz] 
 		  [tooltip: Crossover frequency (Hz) separating low and middle frequencies]",
 		  200, 50, 1000, 1));
-	  t60dc		= reverbGroup(vslider("[1] Low RT60 [unit:s] 
+	  t60dc		= reverbGroup(vslider("[1] low RT60 [unit:s] 
 		  [tooltip: T60 = time (in seconds) to decay 60dB in low-frequency band]",
 		  3, 0.1, 8, 0.1));
-	  t60m		= reverbGroup(vslider("[2] Mid RT60 [unit:s] 
+	  t60m		= reverbGroup(vslider("[2] mid RT60 [unit:s] 
 		  [tooltip: T60 = time (in seconds) to decay 60dB in middle band]",
 		  2, 0.1, 8, 0.1));
-	  f2		= reverbGroup(vslider("[3] HF Damping [unit:Hz] 
+	  f2		= reverbGroup(vslider("[3] hf damping [unit:Hz] 
 		  [tooltip: Frequency (Hz) at which the high-frequency T60 is half the middle-band's T60]",
-		  6000, 1500, 0.49*fsmax, 1));
-	  drywet 		= reverbGroup(vslider("[4] Dry/Wet Mix 
+		  6000, 1500, 0.49*sampleRate, 1));
+	  drywet 		= reverbGroup(vslider("[4] dry/wet 
 		  [tooltip: -1 = dry, 1 = wet]",
-		  0, -1.0, 1.0, 0.01));
+		  -1, -1.0, 1.0, 0.01));
       };
 
 //-----------------------------------------------
@@ -81,7 +92,7 @@ mainGroup(x) 		= (hgroup("[0]RhythmDelay[tooltip: RhythmDelay by magnetophon]", 
 // todo make another morph slider + effects set, for feedback from time(currenttap)
 
 // reversed so that A will be up and B will be down
-tapInterpol(tap) = (morphSliders:selector(tap,nrTaps));
+tapInterpol(tap) = (morphSliders:selector(tap+nrTaps,nrTaps*2));
 morph(A,B,i) = B,A: interpolate(i):smooth(0.999);
 
 //-----------------------------------------------
@@ -113,8 +124,8 @@ tapIsHigh(N) = SH((Reset | startPulse(currenttap == N)),Reset)*((Reset*-1)+1); /
 //-----------------------------------------------
 
 insertFX(i) =
- par(chan,nrChans,(resonhp(hpFc,hpQ,1)  : resonlp(lpFc,lpQ,level)   ))
-:reverb(f1,f2,t60dc,t60m,drywet)
+  par(chan,nrChans,(resonhp(hpFc,hpQ,1)  : resonlp(lpFc,lpQ,level)) )
+  :reverb(f1,f2,t60dc,t60m,drywet)
 with {
   level		= morph(Agroup(FXparams.level),Bgroup(FXparams.level),i);
   lpFc 		= morph(Agroup(FXparams.lpFc),Bgroup(FXparams.lpFc),i);
@@ -128,8 +139,14 @@ with {
   drywet	= morph(Agroup(FXparams.drywet),Bgroup(FXparams.drywet),i);
 };
 
+panDelay(tap)	= sdelay(maxPanSamples, 1024, Ldt),sdelay(maxPanSamples, 1024, Rdt)
+with {
+  pan		= (morphSliders:selector(tap,nrTaps*2)):smooth(0.999);
+  Rdt		= (pan:min(0))*maxPanDelay:*(-1);
+  Ldt		= (pan:max(0))*maxPanDelay;
+};
 
-reverb(f1,f2,t60dc,t60m,drywet,x,y) = x,y:zita_distrib2(N): zita_rev_fdn(f1,f2,t60dc,t60m,fsmax) : output2(N): dry_wet(x,y)
+reverb(f1,f2,t60dc,t60m,drywet,x,y) = x,y:zita_distrib2(N): zita_rev_fdn(f1,f2,t60dc,t60m,sampleRate) : output2(N): dry_wet(x,y)
 with {
   N = 8;
   /*zita_distrib(N) = _<:_,_*-1<:  fanflip(N) 
@@ -155,6 +172,11 @@ with {
 //-----------------------------------------------
 // putting it all together
 //-----------------------------------------------
+//the multichannel version
+//RhythmDelay = par(i, nrChans, MonoRhythmDelay);
+//mono FB, no FX:
+//feedbacker = (_,_*TapIsOK(tap):+)~(_@FBtime*feedback:max(-4):min(4):compressor_mono(100,-18,0,100));
+
 /*
 MonoRhythmDelay = feedbacker : (_<:par(tap, nrTaps, ((_@time(tap):insertFX(tapInterpol(tap))) * (TapIsOK(tap):smooth(0.999)) ))):>_
 with { 
@@ -168,7 +190,7 @@ feedbacker = (_,_*TapIsOK(tap):+)~(_@FBtime*feedback:insertFX(feedbackMorph):max
 };
 */
 //make nrTaps parallel delaylines but only let each hear when  we have a tap with that number.and if the delaytime is smaller than max.
-RhythmDelay(nrChans) = feedbacker:(bus(nrChans) <: par(tap, nrTaps, par(chan,nrChans,(_@time(tap))):insertFX(tapInterpol(tap))):par(tap, nrTaps,par(chan,nrChans,(_ * (TapIsOK(tap):smooth(0.999)) ))):>bus(nrChans))
+RhythmDelay = feedbacker:(bus(nrChans) <: par(tap, nrTaps, par(chan,nrChans,(_@time(tap))):insertFX(tapInterpol(tap))):par(tap, nrTaps,panDelay(tap):par(chan,nrChans,(_ * (TapIsOK(tap):smooth(0.999)) ))):>bus(nrChans))
   with { 
   time(nr) = timer(tapIsHigh(nr+2));
   TapIsOK(nr) = ((currenttap > nr+1) & (time(nr)<maxDelTime));
@@ -179,14 +201,9 @@ RhythmDelay(nrChans) = feedbacker:(bus(nrChans) <: par(tap, nrTaps, par(chan,nrC
   feedbacker = (interleave(nrChans,nrChans):par(chan,nrChans,(_,_:+)))~(insertFX(feedbackMorph):par(chan,nrChans,(_@FBtime*feedback:max(-4):min(4):compressor_mono(100,-18,0,100))));
   };
 
-//RhythmDelay = par(i, nrChans, MonoRhythmDelay); //the multichannel version
-
-
-//mono FB, no FX:
-//feedbacker = (_,_*TapIsOK(tap):+)~(_@FBtime*feedback:max(-4):min(4):compressor_mono(100,-18,0,100));
-process = RhythmDelay(nrChans);
-
-//RhythmDelay(nrChans);
+process = RhythmDelay;
+//panDelay(3);
+//RhythmDelay;
 
 //bus(nrChans) <: par(tap, nrTaps, par(chan,nrChans,(_@mtime(tap))):insertFX(tapInterpol(tap))):>par(chan,nrChans,(_ * (TapIsOK(3):smooth(0.999)) )):>bus(nrChans);
 
