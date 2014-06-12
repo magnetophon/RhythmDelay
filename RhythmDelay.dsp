@@ -26,24 +26,24 @@ noTapsMaxTime	= 3*fsmax;  	//maximum delay time for each tap. After this time we
 // the GUI
 //-----------------------------------------------
 
-mainGroup(x) 		= (vgroup("[0]RhythmDelay", x)); // To recieve OSC pitch and other messages
+mainGroup(x) 		= (vgroup("[0]RhythmDelay[tooltip: RhythmDelay by magnetophon]", x)); // To recieve OSC pitch and other messages
   tapGroup(x)  		= mainGroup(vgroup("[0tap", x));
-    resetBtn		= tapGroup(button("[0]reset"):startPulse);
-    tap			= tapGroup(button("[1]tap"):startPulse);
-    morphGroup(x)	= tapGroup(hgroup("[3]morph", x));
-      morphSliders 	= morphGroup(par(i, tapMax, (vslider("[%i]A/B %nr",	((i/tapMax)*-1)+1, 0, 1, 0.01):smooth(0.999)) with { nr = i+1;}))
+    tap			= tapGroup(button("[0]tap[tooltip: tap a rhythm]"):startPulse);
+    resetBtn		= tapGroup(button("[1]reset[tooltip: reset the rhythm]"):startPulse);
+    morphGroup(x)	= tapGroup(hgroup("[2]morph[tooltip: morph between settings A and B]", x));
+      morphSliders 	= morphGroup(par(i, tapMax, (vslider("[%i]A/B tap %nr[tooltip: on which point between A and B is tap %nr]",	((i/(tapMax-1))*-1)+1, 0, 1, 0.01):smooth(0.999)) with { nr = i+1;}))
       ;
 
   //smoothing is done in morph, 
-  ABgroup(x)		= mainGroup(vgroup("[1]effects", x));
-    Agroup(x)		= ABgroup((hgroup("[0]A", x)));
-    Bgroup(x)		= ABgroup((hgroup("[1]B", x)));
+  ABgroup(x)		= mainGroup(vgroup("[1]insert effects[tooltip: independant insert effects on each tap]", x));
+    Agroup(x)		= ABgroup((hgroup("[0]A[tooltip: settings A]", x)));
+    Bgroup(x)		= ABgroup((hgroup("[1]B[tooltip: settings B]", x)));
       FXparams = environment {
-	volume		= vslider("[0]volume",	-144, -144, 0, 0.1):db2linear;
-	LPgroup(x)	= hgroup("[1]low pass", x);
-	  lpFc		= LPgroup(vslider("[0]freq",	1, 0, 1, 0.001):pow(2)*20000+20);
-	  lpQ		= LPgroup(vslider("[1]Q",	1, 0.5, 7, 0.1));
-	reverbGroup(x)	= hgroup("[2]reverb", x);
+	level		= vslider("[0]level [unit:dB][tooltip: the level]",0, -144, 0, 0.1):db2linear;
+	LPgroup(x)	= hgroup("[1]low pass[unit:Hz][tooltip: resonant low-pass filter]", x);
+	  lpFc		= LPgroup(vslider("[0]freq[tooltip: lp-filter cutoff frequency]", 0.49*fsmax, 20, 0.49*fsmax, 1));
+	  lpQ		= LPgroup(vslider("[1]Q[tooltip: lp-filter resonance]",	1, 0.5, 7, 0.1));
+	reverbGroup(x)	= hgroup("[2]reverb[tooltip: zita-rev1 by Fons Adriaensen]", x);
 	  f1		= reverbGroup(vslider("[0] LF X [unit:Hz] 
 		  [tooltip: Crossover frequency (Hz) separating low and middle frequencies]",
 		  200, 50, 1000, 1));
@@ -64,17 +64,18 @@ mainGroup(x) 		= (vgroup("[0]RhythmDelay", x)); // To recieve OSC pitch and othe
 //-----------------------------------------------
 // the morpher
 //-----------------------------------------------
-// there are some of insert-effects on each tap:
+// Each tap has the following insert-effects:
 // a low-pass filter
 // a reverb
 
-// we have two sets of controls for the insert FX: A and B
-// the actual settings for each tap are a linear interpolation between the two.
-// each delay-tap has a slider controlling the interpolation
+// There are two sets of controls for the insert FX: A and B.
+// The actual settings for each tap are a linear interpolation between the two.
+// Each delay-tap has a slider controlling the interpolation.
 
 // todo make a knob for each control that controlls the offset between L and R (stereo only)
 // todo use sdelay(N, it, dt) for smoot LR delay offset?
 // todo AND/OR make A/B be midi velocity and offset be note-number
+// todo make another morph slider + effects set, for feedback from time(currenttap)
 
 // reversed so that A will be up and B will be down
 morph(A,B,tap) = B,A: interpolate(morphSliders:selector(tap,tapMax)):smooth(0.999);
@@ -108,11 +109,11 @@ tapIsHigh(N) = SH((Reset | startPulse(currenttap == N)),Reset)*((Reset*-1)+1); /
 //-----------------------------------------------
 
 insertFX(tap) = 
-//_*volume
-resonlp(fc,Q,volume)
+//_*level
+resonlp(fc,Q,level)
 :reverb(f1,f2,t60dc,t60m,drywet)
 with {
-volume	= morph(Agroup(FXparams.volume),Bgroup(FXparams.volume),tap);
+level	= morph(Agroup(FXparams.level),Bgroup(FXparams.level),tap);
 fc 	= morph(Agroup(FXparams.lpFc),Bgroup(FXparams.lpFc),tap);
 Q 	= morph(Agroup(FXparams.lpQ),Bgroup(FXparams.lpQ),tap);
 f1	= morph(Agroup(FXparams.f1),Bgroup(FXparams.f1),tap);

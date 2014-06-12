@@ -3,10 +3,12 @@ RhythmDelay
 
 tap a rhythm into your delay!
 
-there are some of insert-effects on each tap:
+Each tap has the following insert-effects:
 * a low-pass filter
 * a reverb
 
-there are two sets of controls for the insert FX: A and B
-the actual settings for each tap are a linear interpolation between the two.
-each delay-tap has a slider controlling the interpolation
+There are two sets of controls for the insert FX: A and B.
+
+The actual settings for each tap are a linear interpolation between the two.
+
+Each delay-tap has a slider controlling the interpolation.
