@@ -17,11 +17,10 @@ zita_rev_fdn(f1,f2,t60dc,t60m,fsmax) = component("effect.lib").zita_rev_fdn(f1,f
 // contants
 //-----------------------------------------------
 fsmax		= 44100;
-DelMax		= 10*fsmax;  	//maximum delay time in samples
-tapMax		= 4;		//maximum number of taps
-NrChan		= 2;		//number of channels
-noTapsMaxTime	= 3*fsmax;  	//maximum delay time for each tap. After this time we reset the nr of taps
-
+NrChan		= 2;			//number of channels
+tapNrMax		= 4;			//maximum number of taps
+TapTimeMax	= 3*fsmax;  		//maximum delay time for each tap. After this time we reset the nr of taps
+DelMax		= TapTimeMax*tapNrMax;  	//maximum delay time in samples
 //-----------------------------------------------
 // the GUI
 //-----------------------------------------------
@@ -31,15 +30,15 @@ mainGroup(x) 		= (vgroup("[0]RhythmDelay[tooltip: RhythmDelay by magnetophon]", 
     tap			= tapGroup(button("[0]tap[tooltip: tap a rhythm]"):startPulse);
     resetBtn		= tapGroup(button("[1]reset[tooltip: reset the rhythm]"):startPulse);
     morphGroup(x)	= tapGroup(hgroup("[2]morph[tooltip: morph between settings A and B]", x));
-      morphSliders 	= morphGroup(par(i, tapMax, (vslider("[%i]A/B tap %nr[tooltip: on which point between A and B is tap %nr]",	((i/(tapMax-1))*-1)+1, 0, 1, 0.01):smooth(0.999)) with { nr = i+1;}))
-      ;
+      morphSliders 	= morphGroup(par(i, tapNrMax, (vslider("[%i]A/B tap %nr[tooltip: on which point between A and B is tap %nr]",	((i/(tapNrMax-1))*-1)+1, 0, 1, 0.01)) with { nr = i+1;}));
+      feedbackMorph	= morphGroup(vslider("[%tapNrMax]A/B feedback[tooltip: on which point between A and B is feedback tap]",	0, 0, 1, 0.01));
 
   //smoothing is done in morph, 
   ABgroup(x)		= mainGroup(vgroup("[1]insert effects[tooltip: independant insert effects on each tap]", x));
     Agroup(x)		= ABgroup((hgroup("[0]A[tooltip: settings A]", x)));
     Bgroup(x)		= ABgroup((hgroup("[1]B[tooltip: settings B]", x)));
       FXparams = environment {
-	level		= vslider("[0]level [unit:dB][tooltip: the level]",0, -144, 0, 0.1):db2linear;
+	level		= vslider("[0]level [unit:dB][tooltip: the volume level]",0, -144, 0, 0.1):db2linear;
 	LPgroup(x)	= hgroup("[1]low pass[unit:Hz][tooltip: resonant low-pass filter]", x);
 	  lpFc		= LPgroup(vslider("[0]freq[tooltip: lp-filter cutoff frequency]", 0.49*fsmax, 20, 0.49*fsmax, 1));
 	  lpQ		= LPgroup(vslider("[1]Q[tooltip: lp-filter resonance]",	1, 0.5, 7, 0.1));
@@ -78,7 +77,7 @@ mainGroup(x) 		= (vgroup("[0]RhythmDelay[tooltip: RhythmDelay by magnetophon]", 
 // todo make another morph slider + effects set, for feedback from time(currenttap)
 
 // reversed so that A will be up and B will be down
-morph(A,B,tap) = B,A: interpolate(morphSliders:selector(tap,tapMax)):smooth(0.999);
+morph(A,B,tap) = B,A: interpolate(morphSliders:selector(tap,tapNrMax)):smooth(0.999);
 
 //-----------------------------------------------
 // calculate the delay times
@@ -89,7 +88,7 @@ SH(trig,x) = (*(1 - trig) + x * trig) ~_; //sample and hold "x" when "trig" is h
 Reset = (SH(resetBtn|tap,resetBtn) | JustStarted | (tooLong & tap))//reset the currenttap counter. We stay "in reset mode" untill the first normal tap afterwards.
   with {
   JustStarted = (SH(resetBtn|tap,1)*-1)+1; // a bit of a hack to make sure we start the program in reset mode.
-  tooLong = (timer(tap xor 1) > noTapsMaxTime); // also reset when there have been no taps for noTapsMaxTime samples.
+  tooLong = (timer(tap xor 1) > TapTimeMax); // also reset when there have been no taps for TapTimeMax samples.
   };
 
 startPulse= _ <: _, mem: - : >(0); //one sample pulse at start
@@ -100,7 +99,7 @@ timer(pulse) = (pulse,(+(1)~((min(DelMax)):(startPulse(pulse)==1,_,0:select2))<:
 
 countUpReset(count, trig, reset)	= \(c). ((trig, c, min(count, c+1)):select2)~_*(reset==0); //for each "trig" count one step up until a maximum of "count". reset sets to 0
 
-currenttap = countUpReset(tapMax+1, tap, Reset); //how many taps did we do?
+currenttap = countUpReset(tapNrMax+1, tap, Reset); //how many taps did we do?
 
 tapIsHigh(N) = SH((Reset | startPulse(currenttap == N)),Reset)*((Reset*-1)+1); //the length of the Nth tap is how long "tapIsHigh(N) " is high
 
@@ -140,18 +139,42 @@ with {
     dry = 1.0-wet;
   };
 };
+//BU:
+//MonoRhythmDelay(x) = ((_,x:+@time(currenttap))~_<:par(tap, tapNrMax, ((_@time(tap):insertFX(tap)) * (((currenttap > tap+1) & (time(tap)<DelMax)):smooth(0.999)) ))):>_
 
 //-----------------------------------------------
 // putting it all together
 //-----------------------------------------------
+//MonoRhythmDelay(x) = ((_,x:+@time(currenttap))~_<:par(tap, tapNrMax, ((_@time(tap):insertFX(tap)) * (((currenttap > tap+1) & (time(tap)<DelMax)):smooth(0.999)) ))):>_
+//MonoRhythmDelay = (+~_@time(currenttap)),(FBtime:vbargraph("time", 0, DelMax)),(FBhigh:vbargraph("FBhigh", 0, 2))
 
-MonoRhythmDelay = _<:par(tap, tapMax, ((_@time(tap):insertFX(tap)) * (((currenttap > tap+1) & (time(tap)<DelMax)):smooth(0.999)) )):>_
+//MonoRhythmDelay(x) = par(tap, tapNrMax,time(tap))
+
+//MonoRhythmDelay(x) = (_,x:+)~_@10
+//\(c). 
+//feedbackMorph
+//MonoRhythmDelay = (+<:(((_@time(currenttap))~_),par(tap, tapNrMax, ((_@time(tap):insertFX(tap)) * (((currenttap > tap+1) & (time(tap)<DelMax)):smooth(0.999)) )))):>_
+
+
+MonoRhythmDelay(x) = (_,x:+)~(_@FBtime*0.1):(_<:par(tap, tapNrMax, ((_@time(tap):insertFX(tap)) * (((currenttap > tap+1) & (time(tap)<DelMax)):smooth(0.999)) ))):>_
 with { 
-time(nr) = (timer(tapIsHigh(nr+2)));
+time(nr) = timer(tapIsHigh(nr+2));
+TapIsOK(nr) =((currenttap > nr+1) & (time(nr)<DelMax));
+maximum(1) = _;
+maximum(2) = max;
+maximum(N) = maximum(int(N/2)),maximum(int((N+1)/2)):max;
+FBtime = par(tap, tapNrMax,(time(tap)*TapIsOK(tap))):maximum(tapNrMax):vbargraph("del", 0, DelMax);
 };
-//make tapMax parallel delaylines but only let each hear when  we have a tap with that number.and if the delaytime is smaller than max.
+//make tapNrMax parallel delaylines but only let each hear when  we have a tap with that number.and if the delaytime is smaller than max.
 
 RhythmDelay = par(i, NrChan, MonoRhythmDelay); //the multichannel version
 
-//process = insertFX(1);
-process = RhythmDelay;
+
+
+
+
+process =MonoRhythmDelay;
+//mcount = 10;
+//trig= tap;
+//reset = Reset;
+//process(c) = countUpReset(mcount, trig, reset);
