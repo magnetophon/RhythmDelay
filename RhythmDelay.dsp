@@ -44,15 +44,15 @@ mainGroup(x) 		= (hgroup("[0]RhythmDelay[tooltip: RhythmDelay by www.magnetophon
 	ABpanGroup(x)	= vgroup("[%i]tap %nr[tooltip: the settings for tap %nr]", x);
       }):interleave(nrChans,nrTaps));
     feedbackGroup(x)	= tapGroup(hgroup("[%nr]feedback[tooltip: morph between settings A and B]", x))with {nr = 1+nrTaps;};
-      feedback		= feedbackGroup(vslider("[0]amount[tooltip: the amount of feedback]",0.5, 0, 1, 0.01)):smooth(0.999);
-      feedbackMorph	= feedbackGroup(vslider("[1]A/B[tooltip: on which point between A and B is the feedback tap]",	0, 0, 1, 0.01))with {nr = 2+nrTaps;};
+      feedback		= feedbackGroup(vslider("[0]amount[tooltip: the amount of feedback]",0, 0, 1, 0.01)):smooth(0.999);
+      feedbackMorph	= feedbackGroup(vslider("[1]A/B[tooltip: on which point between A and B is the feedback tap]",	0, 0, 1, 0.01));
 
   //smoothing is done in morph, 
   ABgroup(x)		= mainGroup(vgroup("[1]insert effects[tooltip: independant insert effects on each tap]", x));
     Agroup(x)		= ABgroup((hgroup("[0]A[tooltip: settings A]", x)));
     Bgroup(x)		= ABgroup((hgroup("[1]B[tooltip: settings B]", x)));
       FXparams = environment {
-	level		= vslider("[0]level [unit:dB][tooltip: the volume level]",0, -144, 0, 0.1):db2linear;
+	level		= vslider("[0]level [tooltip: the volume level]",1, 0, 1, 0.01);
 	HPgroup(x)	= hgroup("[1]high pass[unit:Hz][tooltip: resonant high-pass filter]", x);
 	  hpFc		= HPgroup(vslider("[0]freq[tooltip: hp-filter cutoff frequency]", 160, 20, Nyquist, 1));
 	  hpQ		= HPgroup(vslider("[1]Q[tooltip: hp-filter resonance]",	0.5, 0.5, 7, 0.1));
@@ -68,10 +68,10 @@ mainGroup(x) 		= (hgroup("[0]RhythmDelay[tooltip: RhythmDelay by www.magnetophon
 		  0.9, 0.1, 8, 0.1));
 	  t60m		= reverbGroup(vslider("[2] mid decay [unit:s] 
 		  [tooltip: decay time of the  mid-frequency band (in seconds)]",
-		  0.4, 0.1, 8, 0.1));
+		  1.8, 0.1, 8, 0.1));
 	  f2		= reverbGroup(vslider("[3] hi damping [unit:Hz] 
 		  [tooltip: high-frequency damping]",
-		  Nyquist, 1500, Nyquist, 1));
+		  9999, 1500, Nyquist, 1));
 	  drywet 		= reverbGroup(vslider("[4] dry/wet 
 		  [tooltip: -1 = dry, 1 = wet]",
 		  -1, -1.0, 1.0, 0.01));

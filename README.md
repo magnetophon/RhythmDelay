@@ -27,8 +27,13 @@ Be careful with long reverb times on the feedback tap and high feedback amounts,
 
 
 This effect is wet-only, stereo in and out.
-It quite CPU-heavy , as it contains four high quality stereo reverbs.
+It's quite CPU-heavy , as it contains four high quality stereo reverbs.
 The sounds it produces are worth it though.
+
+If you want more taps, just change nrTaps on line 20 from 4 to something else.
+If you want a version without the cpu-hungry reverbs, comment out line 131; the one that says: 
+
+:reverb(f1,f2,t60dc,t60m,drywet)
 
 Have fun!
 
