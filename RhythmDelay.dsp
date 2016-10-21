@@ -1,6 +1,6 @@
 
 declare name 		"RhythmDelay";
-declare version 	"2.0";
+declare version 	"2.1";
 declare author 		"Bart Brouns";
 declare license 	"GNU 3.0";
 declare copyright 	"(c) Bart Brouns 2014";
