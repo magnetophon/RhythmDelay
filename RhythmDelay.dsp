@@ -1,10 +1,10 @@
 
 declare name 		"RhythmDelay";
-declare version 	"2.1";
+declare version 	"2.2.0";
 declare author 		"Bart Brouns";
-declare license 	"GNU 3.0";
-declare copyright 	"(c) Bart Brouns 2014";
-declare description 	"tap a rhythm on the tap button, an the de.delay will follow";
+declare license 	"GPL-3.0";
+declare copyright 	"(c) Bart Brouns 2023";
+declare description 	"tap a rhythm on the tap button, and the delay will follow";
 declare reference 	"inspired by the D-Two - Multitap Rhythm Delay by TC Electronic";
 //-----------------------------------------------
 // imports
